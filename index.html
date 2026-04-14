@@ -640,13 +640,12 @@
           "https://n8n-smartmarketer.duckdns.org/webhook/873bf322-b3db-4e92-99ec-d50579be2582",
         ai: "https://n8n-smartmarketer.duckdns.org/webhook/39d9aa94-3d71-4b0d-beca-c4d7fd6e82a0",
       };
-      //const WEBHOOKS = {
-       // gpt: "https://aeoworkflow.duckdns.org/webhook-test/2fe6c5e2-9c27-469e-9838-fb499f69a71b",
-        //perplexity:
-          //"https://aeoworkflow.duckdns.org/webhook-test/aedc4841-0af3-499e-bd27-4d7f8c78af84",
-        //ai: "https://aeoworkflow.duckdns.org/webhook-test/39d9aa94-3d71-4b0d-beca-c4d7fd6e82a0",
-      //};
-
+      // const WEBHOOKS = {
+      //   gpt: "https://n8n-smartmarketer.duckdns.org/webhook-test/2fe6c5e2-9c27-469e-9838-fb499f69a71b",
+      //   perplexity:
+      //     "https://n8n-smartmarketer.duckdns.org/webhook-test/873bf322-b3db-4e92-99ec-d50579be2582",
+      //   ai: "https://n8n-smartmarketer.duckdns.org/webhook-test/39d9aa94-3d71-4b0d-beca-c4d7fd6e82a0",
+      // };
 
       const ENGINE_COLORS = {
         gpt: "var(--gpt-color)",
@@ -729,28 +728,46 @@
 
             const data = await response.json();
 
-            if (Array.isArray(data) && data.length > 0) {
-              // Update the engine badge in the results section
+            // Normalize: handle both plain object and array responses
+            const fileResult =
+              data?.mimeType === "application/vnd.google-apps.spreadsheet"
+                ? data
+                : Array.isArray(data) &&
+                    data[0]?.mimeType ===
+                      "application/vnd.google-apps.spreadsheet"
+                  ? data[0]
+                  : null;
+
+            if (fileResult) {
+              const sheetUrl = `https://docs.google.com/spreadsheets/d/${fileResult.id}`;
+              showStatus(
+                "loading",
+                `Your report is being generated — this takes 2–3 minutes as rows are added one by one.
+     <a href="${sheetUrl}" target="_blank"
+        style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:7px 14px;
+               background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);
+               border-radius:7px;color:#fbbf24;text-decoration:none;font-size:0.85rem;font-weight:600;">
+       📄 ${fileResult.name}
+       <span style="font-size:0.75rem;opacity:0.7;">Open in Sheets ↗</span>
+     </a>`,
+              );
+            } else if (Array.isArray(data) && data.length > 0) {
+              // existing row data path
               const badge = document.getElementById("currentEngineBadge");
               badge.textContent = ENGINE_NAMES[engineId];
               badge.style.backgroundColor = ENGINE_COLORS[engineId];
-
               displayResults(data);
               createCharts(data, ENGINE_COLORS[engineId]);
               analysisSection.style.display = "block";
               showStatus(
                 "success",
-                `${ENGINE_NAMES[engineId]} complete! Successfully processed ${data.length} rows.`,
+                `${ENGINE_NAMES[engineId]} complete! Processed ${data.length} rows.`,
               );
-
               setTimeout(() => {
                 analysisSection.scrollIntoView({ behavior: "smooth" });
               }, 100);
             } else {
-              showStatus(
-                "info",
-                "Analysis ran successfully.",
-              );
+              showStatus("info", "Analysis ran successfully.");
             }
           } catch (error) {
             console.error("Error:", error);
